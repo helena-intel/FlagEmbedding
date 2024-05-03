@@ -1,7 +1,10 @@
+from pathlib import Path
 from typing import Union, List, Tuple, Any
+import json
 
 import numpy as np
 import torch
+from optimum.intel import OVModelForSequenceClassification
 from torch import Tensor
 from torch.utils.data import DataLoader
 from tqdm import tqdm, trange
@@ -152,11 +155,16 @@ class FlagReranker:
             model_name_or_path: str = None,
             use_fp16: bool = False,
             cache_dir: str = None,
-            device: Union[str, int] = None
+            device: Union[str, int] = None,
+            backend: str = None
     ) -> None:
 
         self.tokenizer = AutoTokenizer.from_pretrained(model_name_or_path, cache_dir=cache_dir)
-        self.model = AutoModelForSequenceClassification.from_pretrained(model_name_or_path, cache_dir=cache_dir)
+        if backend is None:
+            self.model = AutoModelForSequenceClassification.from_pretrained(model_name_or_path, cache_dir=cache_dir)
+        elif backend == "openvino":
+            self.model = self._load_openvino_model(model_name_or_path, cache_dir=cache_dir)
+            device = "cpu"
 
         if device and isinstance(device, str):
             self.device = torch.device(device)
@@ -189,6 +197,30 @@ class FlagReranker:
                 self.model = torch.nn.DataParallel(self.model)
         else:
             self.num_gpus = 1
+
+    def _load_openvino_model(self, model_name_or_path, cache_dir):
+        print(f"loading openvino model from {model_name_or_path}")
+        try:
+            from optimum.intel import OVModelForSequenceClassification
+        except ModuleNotFoundError:
+            raise Exception(
+                "Using the OpenVINO backend requires installing optimum-intel and OpenVINO. You can install them with pip: `pip install optimum-intel openvino`."
+            )
+
+        export = not (Path(model_name_or_path) / "openvino_model.xml").is_file()
+
+        ov_config = os.environ.get("OPENVINO_CONFIG")
+        if ov_config is not None:
+            if not Path(ov_config).exists():
+                raise ValueError("OPENVINO_CONFIG should point to a .json file containing an OpenVINO config")
+            with open(ov_config) as f:
+                ov_config_dict = json.load(f)
+        else:
+            ov_config_dict = {}
+        model = OVModelForSequenceClassification.from_pretrained(
+            model_name_or_path, export=export, cache_dir=cache_dir, ov_config=ov_config_dict
+        )
+        return model
 
     @torch.no_grad()
     def compute_score(self, sentence_pairs: Union[List[Tuple[str, str]], Tuple[str, str]], batch_size: int = 256,
