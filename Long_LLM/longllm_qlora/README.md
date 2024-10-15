@@ -23,7 +23,7 @@ pip install "unsloth[colab-new] @ git+https://github.com/unslothai/unsloth.git"
 pip install rouge fuzzywuzzy jieba pandas seaborn python-Levenshtein
 ```
 
-**NOTE**: you must modify the source code of `unsloth` so that you can set the `rope_theta` correctly in training. Go to `$ENC_LOCATION$/lib/python3.10/site-packages/unsloth/models/llama.py`, comment all lines from `1053-1061`. The results should be like:
+**NOTE**: you must modify the source code of `unsloth` so that you can set the `rope_theta` correctly in training. Go to `$ENC_LOCATION$/lib/python3.10/site-packages/unsloth/models/llama.py`, comment all lines from `1080-1088`. The results should be like:
 ```python
 # if (rope_scaling is None) and (max_seq_length > model_max_seq_length):
 #     rope_scaling = max_seq_length / model_max_seq_length
@@ -62,6 +62,9 @@ For any path specified for `train_data` and `eval_data`: if it is prefixed with 
 
 
 # Training
+
+**NOTE: `unsloth` does not support DDP training now despite they used to in May 2024. So the training script won't work. You're encouraged to open a feature request in the [unsloth repo](https://github.com/unslothai/unsloth). Or, you can try to use some other framework for efficient tuning, like MegatronLM. More details can be found in [this issue](https://github.com/FlagOpen/FlagEmbedding/issues/919).**
+
 ```bash
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
