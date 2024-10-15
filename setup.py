@@ -24,7 +24,7 @@ setup(
         'transformers>=4.33.0',
         'datasets',
         'accelerate>=0.20.1',
-        'sentence_transformers',
+        'sentence_transformers>=3.2.0',
         'peft',
     ],
 )
